@@ -3,10 +3,7 @@
 
 from utils.openai_utils import *
 import re
-import json
-import openai
-import requests
-import ast
+
 
 def function_generator(question_prompt,table_prompt,table_name):
     prompt_system = f"""
@@ -473,13 +470,15 @@ def update_table(table_prompt,results):
     cleaned_row = cleaned_row.replace("```\n", "")
 
     new_table = {}
-    new_table["header"] = table_prompt["header"]
+    if "header" in table_prompt:
+        new_table["header"] = table_prompt["header"]
+
     new_table["rows"] = cleaned_row
 
     return new_table
 
 
-def check_coherent_table(table,renewed_table,question,cur_output):
+def check_coherent_table(table,renewed_table,question):
     prompt_user = f"""
             The following is the table:'''{renewed_table}'''\
             The following is a question:'''{question}'''
@@ -506,7 +505,6 @@ def check_coherent_table(table,renewed_table,question,cur_output):
     
     check = get_completion(prompt_system,prompt_user)
     print(check)
-    cur_output["check_coherent"] = check
     if "YES" in check or "yes" in check or "Yes" in check or "Y" in check:
         return renewed_table
 

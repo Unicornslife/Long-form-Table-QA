@@ -6,11 +6,9 @@ import argparse
 import random
 from utils.openai_utils import *
 from prompt.long_form_prompt import *
+from config import *
 from datasets import load_dataset
 
-model_current = "None"
-api_key = "None"
-organization = "None"
 
 
 def extract_function_info(function_str):
@@ -135,7 +133,7 @@ def process_question(question, table_prompt, table_name, results_list, cur_outpu
     print(f"Devided Question: {question_prompt}")
     cur_output[f"Devided Question {j}"] = question_prompt
     table_input = table_prompt if not results_list else check_coherent_table(table_prompt,renewed_table,question_prompt,cur_output)
-    loop_range = 3
+    loop_range = 1
 
     for time in range(loop_range):
         function_response = function_generator(question_prompt, table_input, table_name)
@@ -151,7 +149,7 @@ def process_question(question, table_prompt, table_name, results_list, cur_outpu
     cur_output[f"Devided long results {j}"] = sentence
     results_list.append(sentence)
 
-    # Updating the table based on the sentence
+
     if len(results_list) == 1:
         renewed_table = update_table(table_prompt, sentence)
 
@@ -159,19 +157,15 @@ def process_question(question, table_prompt, table_name, results_list, cur_outpu
 
 def get_table_answer(test_data,start_num, end_num):
     output_dict = []
-    if model_current == "gpt-35-turbo":
-        list_num = range(start_num, end_num)
-    else:
-        list_num = random.sample(range(start_num, end_num), 5)
-    
-    for i in list_num:
+    for i in range(start_num, end_num):
         try:
-            questions = test_data[i]["question"]
+            questions = test_data[i]["query"]
             questions_list = question_devide(questions)
             table_prompt = test_data[i]["table"]
-            ground_outputs = test_data[i]["response"]
-            table_name = test_data[i]["table_title"]
+            ground_outputs = test_data[i]["summary"]
+            table_name = test_data[i]["table"]["title"]
             example_id = test_data[i]["example_id"]
+
             print(f"Question {i}: {questions}")
             results_list = []
             renewed_table = table_prompt
@@ -183,11 +177,11 @@ def get_table_answer(test_data,start_num, end_num):
 
             long_answer = generate_long_answer(questions,results_list)
             print("ground_answer:",ground_outputs)
-            cur_output["predict_long_answer"] = long_answer
+            cur_output["prediction"] = long_answer
             output_dict.append(cur_output)
 
         except Exception:
-            cur_output = {"example_id": example_id, "question": questions, "predict_long_answer": "error"}
+            cur_output = {"example_id": example_id, "question": questions, "prediction": "error"}
             output_dict.append(cur_output)
         
     return output_dict
@@ -196,20 +190,19 @@ def get_table_answer(test_data,start_num, end_num):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, default="gpt-35-turbo")
+    parser.add_argument("--model", type=str, default="gpt-3.5-turbo-1106")
     parser.add_argument("--start_num", type=int, default=0)
     parser.add_argument("--end_num", type=int, default=1000)
     parser.add_argument("--dataset_name", type=str, default="yale-nlp/QTSumm")
     parser.add_argument("--split_name", type=str, default="test")
     parser.add_argument("--api_key", type=str)
-    parser.add_argument("--organization", type=str)
+    parser.add_argument("--base_url", type=str)
+    parser.add_argument("--output_path", type=str, default= "output.json")
     args = parser.parse_args()
-    model_current = args.model
-    api_key = args.api_key
-    organization = args.organization
+    set_global_config(args.model, args.api_key, args.base_url)
     test_data = load_dataset(args.dataset_name, split=args.split_name)
     data = []
     data = get_table_answer(test_data, args.start_num, args.end_num)
 
-    with open(f"{args.dataset_name}_{args.split_name}_{model_current}_output.json", "w") as f:
+    with open(args.output_path, "w") as f:
         json.dump(data, f, indent=4)
