@@ -1,0 +1,390 @@
+<style>
+    #subQuestionsAndAnswersList {
+        list-style-type: none;
+        padding-left: 0;
+    }
+
+    h4 {
+        display: inline-block;  /* Makes h4 inline but allows for width and margins */
+    }
+
+
+    .score-slider {
+        width: 50%; 
+        height: 15px; 
+    }
+
+    .legend {
+        display: flex;
+        justify-content: space-between; 
+        align-items: center; 
+        width: 50%; 
+    }
+
+    .draggable {
+        padding: 5px;
+        border: 1px solid #d1d1d1;
+        margin: 5px 0;
+        cursor: grab;
+    }
+
+    .delete-btn, .add-btn {
+        cursor: pointer;
+        background-color: #e74c3c;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        padding: 5px 10px;
+        margin: 5px;
+    }
+
+    .add-btn {
+        background-color: #2ecc71;
+    }
+
+    .edit-input {
+        width: 80%; /* Adjust this value based on your design */
+        margin-top: 10px;
+        margin-bottom: 10px;
+        padding: 5px;
+        box-sizing: border-box; /* Ensure padding doesn't increase the input's total width */
+    }
+
+    .input-container {
+        margin: 10px 0;
+    }
+
+    .input-label {
+        margin-right: 10px;
+    }
+
+    .input-field {
+        margin-bottom: 10px;
+    }
+</style>
+
+<div class="container mt-2">
+    <h3>Question Editing Task</h3>
+    <p>example_id = ${example_id}</p>
+    <p>gpt_type = ${gpt_type}</p>
+    <p>Please review and edit the Devided questions as needed:</p>
+    
+    <div id="tableContainer"></div>
+    <div>
+        <h3 style="display: inline-block; margin-right: 10px;">Main Question: </h3>
+        <p id="totalAnswer" style="display: inline-block;">${Question}</p>
+    </div>
+    <p>Please compare the answer below with the ground_answer and record the number of Major Error and Minor Error in the answer.</p>
+    <div>
+        <div>
+            <h3 style="display: inline-block; margin-right: 10px;">Answer: </h3>
+            <p id="totalAnswer" style="display: inline-block;">${totalAnswer}</p>
+        </div>
+        <div>
+            <h3 style="display: inline-block; margin-right: 10px;">Ground_Answer: </h3>
+            <p id="totalAnswer" style="display: inline-block;">${ground_totalAnswer}</p>
+        </div>
+        
+        <div>
+            <h3>Major Error Number: </h3>
+            <input id="major_error_num" type="range" min="0" max="5" value="0" class="score-slider">
+            <div class="legend">
+                <span>0</span>
+                <span>1</span>
+                <span>2</span>
+                <span>3</span>
+                <span>4</span>
+                <span>5</span>
+            </div>
+        </div>
+
+        <div>
+            <h3>Minor Error Number: </h3>
+            <input id="minor_error_num" type="range" min="0" max="5" value="0" class="score-slider">
+            <div class="legend">
+                <span>0</span>
+                <span>1</span>
+                <span>2</span>
+                <span>3</span>
+                <span>4</span>
+                <span>5</span>
+            </div>
+        </div>
+    </div>
+
+    <h4>Devided Questions and Answers:</h4>
+    <ul id="subQuestionsAndAnswersList"></ul>
+
+    <label for="newQuestion" class="d-block mb-1">Enter New Sub-question:</label><br>
+    <textarea id="newQuestion" rows="3" style="width:70%;" placeholder="Type a new sub-question here..."></textarea><br>
+    <button type="button" onclick="addNewItem()" class="mt-2">Add to List</button><br>
+
+    <input type="hidden" id="outputData" name="outputData">
+
+    <h3>Original Devided Questions and Answers:</h3>
+    <ul id="originalSubQuestionsAndAnswersList"></ul>
+</div>
+
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const slider = document.getElementById('major_error_num');
+        slider.addEventListener('input', function() {
+            const value = slider.value;
+            serializeData();
+        });
+    });
+
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const slider = document.getElementById('minor_error_num');
+        slider.addEventListener('input', function() {
+            const value = slider.value;
+            serializeData();
+        });
+    });
+
+    function serializeData() {
+        const listElement = document.getElementById("subQuestionsAndAnswersList");
+        const listItems = listElement.children;
+        const major_error_num = document.getElementById("major_error_num").value;
+        const minor_error_num = document.getElementById("minor_error_num").value;
+        let outputArray = [];
+
+
+        for (let i = 0; i < listItems.length; i++) {
+            const questionParagraph = listItems[i].querySelectorAll("p")[0];
+            const questionTextParts = questionParagraph.textContent.split(':');
+            const questionText = questionTextParts[1].trim();
+
+            outputArray.push({
+                question: questionText,
+                modified: listItems[i].dataset.modified,
+                major_error_num: major_error_num,
+                minor_error_num:minor_error_num
+
+            });
+
+        }
+
+        document.getElementById("outputData").value = JSON.stringify(outputArray);
+    }
+
+</script>
+
+<script>
+    function populateOriginalQuestionsAndAnswers(questions) {
+        const listElement = document.getElementById("originalSubQuestionsAndAnswersList");
+        let addedCount = 0; 
+
+        questions.forEach((question, originalIndex) => {
+            if(question !== "0") {
+                const listItem = document.createElement("li");
+
+                const questionParagraph = document.createElement("p");
+                questionParagraph.textContent = "Q " + (addedCount + 1) + ": " + question;
+                listItem.appendChild(questionParagraph);
+
+                listElement.appendChild(listItem);
+                addedCount++;  // Increase the counter only when a question is added
+            }
+        });
+    }
+
+
+
+    function updateStepNumbers() {
+        const listElement = document.getElementById("subQuestionsAndAnswersList");
+        const listItems = listElement.children;
+
+        for (let i = 0; i < listItems.length; i++) {
+            // Update the step number
+            listItems[i].querySelector("h4").textContent = "Step " + (i + 1) + ":";
+
+            // Update question text
+            const questionParagraph = listItems[i].querySelectorAll("p")[0];
+            const questionTextParts = questionParagraph.textContent.split(':');
+            questionParagraph.textContent = "Q " + (i + 1) + ": " + questionTextParts[1].trim();
+            }
+    }
+
+
+    function generateListItem(subQuestion, isModified = false) {
+        const listElement = document.getElementById("subQuestionsAndAnswersList");
+        const index = listElement.children.length;
+
+        const listItem = document.createElement("li");
+        listItem.classList.add('draggable');
+
+        const stepHeader = document.createElement("h4");
+        stepHeader.textContent = "Step " + (index + 1) + ":";
+        listItem.appendChild(stepHeader);
+
+        const questionParagraph = document.createElement("p");
+        questionParagraph.textContent = "Q " + (index + 1) + ": " + subQuestion;
+        listItem.appendChild(questionParagraph);
+
+
+        // Delete button for each list item
+        const deleteBtn = document.createElement("button");
+        deleteBtn.classList.add('delete-btn');
+        deleteBtn.innerText = "Delete";
+        deleteBtn.addEventListener('click', function() {
+            listItem.remove();
+            updateStepNumbers();  // Update step numbers after removal
+            serializeData();
+        });
+        listItem.appendChild(deleteBtn);
+        
+        const editBtn = document.createElement("button");
+        editBtn.setAttribute('type', 'button');  
+        editBtn.classList.add('edit-btn');
+        editBtn.innerText = "Edit";
+        editBtn.addEventListener('click', function() {
+            // Display the original question and add an input field beneath it for editing
+            const currentQuestion = questionParagraph.textContent.split(": ")[1].trim();
+            questionParagraph.innerHTML = currentQuestion + "<br><input type=\"text\" class=\"edit-input\" value=\"" + currentQuestion + "\" style=\"height: 2em;\">";
+
+
+            const confirmEditBtn = document.createElement("button");
+            confirmEditBtn.setAttribute('type', 'button');  
+            confirmEditBtn.innerText = "Confirm";
+            confirmEditBtn.addEventListener('click', function() {
+                const editedQuestion = questionParagraph.querySelector('.edit-input').value.trim();
+                if (editedQuestion) {
+                    questionParagraph.textContent = "Q " + (index + 1) + ": " + editedQuestion;
+                    listItem.dataset.modified = true;
+                    serializeData();
+                } else {
+                    alert("Please provide a valid question.");
+                }
+
+            });
+            questionParagraph.appendChild(confirmEditBtn);
+        });
+
+        listItem.appendChild(editBtn);
+        listItem.dataset.modified = isModified;
+
+        return listItem;
+    }
+
+
+
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const Devided_question = [
+            "${Devided_question_0}",
+            "${Devided_question_1}",
+            "${Devided_question_2}",
+            "${Devided_question_3}",
+            "${Devided_question_4}",
+            "${Devided_question_5}",
+            "${Devided_question_6}",
+
+        ];
+
+
+        const listElement = document.getElementById("subQuestionsAndAnswersList");
+
+        // Function to generate the list items
+
+        // Populate initial questions
+        Devided_question.forEach((subQuestion, index) => {
+            if (subQuestion !== "0") {
+                const listItem = generateListItem(subQuestion);
+                listElement.appendChild(listItem);
+            }
+        });
+
+        serializeData(); 
+        populateOriginalQuestionsAndAnswers(Devided_question);
+    });
+
+    // Function to add a new question
+    function addNewItem() {
+        const newQuestionInput = document.getElementById("newQuestion");
+        const newQuestion = newQuestionInput.value.trim();
+
+        if (newQuestion) {
+            const listElement = document.getElementById("subQuestionsAndAnswersList");
+            const newItem = generateListItem(newQuestion, true);  
+            listElement.appendChild(newItem);
+
+            // Clear the input field after adding
+            newQuestionInput.value = '';
+            serializeData();
+        } else {
+            alert("Please enter a sub-question.");
+        }
+    }
+</script>
+
+<script>
+    function generateHTMLTableV2(data) {
+        let htmlTable = '<table style="border-collapse: collapse; width: 100%;">\n';
+
+        const tableData = data.header;
+        const tableRows = data.rows;
+        const tableTitle = data.table_title;
+
+        htmlTable += '<thead>';
+        if (tableTitle) {
+            const colspan = tableData.length;
+            htmlTable += '<tr><th colspan="' + colspan + '" style="border: 1px solid black; padding: 8px;">' + tableTitle + '</th></tr>\n';
+        }
+
+        // Header
+        htmlTable += '<tr>';
+        tableData.forEach(headerItem => {
+            htmlTable += '<th style="border: 1px solid black; padding: 8px;">' + headerItem + '</th>';
+        });
+        htmlTable += '</tr></thead>\n';
+
+        // Rows
+        htmlTable += '<tbody>';
+        tableRows.forEach(row => {
+            htmlTable += '<tr>';
+            row.forEach(cell => {
+                htmlTable += '<td style="border: 1px solid black; padding: 8px;">' + cell + '</td>';
+            });
+            htmlTable += '</tr>\n';
+        });
+        htmlTable += '</tbody>\n';
+        htmlTable += '</table>\n';
+
+        return htmlTable;
+    }
+
+
+
+// Fetch data and generate the table
+fetch('https://raw.githubusercontent.com/Unicornslife/public_qtsumm_table/main/qtsumm_test_table.json')
+    .then(response => response.json())
+    .then(dataObject => {
+        for (var i = 0; i < dataObject.length; i++) {
+            if(dataObject[i].example_id == "${example_id}") {
+                current_table = dataObject[i];
+                break;
+            }
+        }
+        if (current_table == null) {
+            alert("No table found for this example_id");
+        }else{
+            const tableContainer = document.getElementById('tableContainer');
+            const htmlTable = generateHTMLTableV2(current_table);
+            tableContainer.innerHTML = htmlTable;
+        }
+
+        
+    })
+    .catch(error => {
+        console.error('Error fetching the JSON data:', error);
+        tableContainer.innerHTML = '<p>An error occurred while fetching the data.</p>';
+    });
+
+</script>
