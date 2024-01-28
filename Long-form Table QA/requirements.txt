@@ -1,8 +1,0 @@
-aiohttp==3.8.5
-aiolimiter==1.1.0
-transformers==4.36.0
-datasets==2.14.6
-numpy==1.26.3
-openai==0.28.1
-protobuf==4.25.1
-sympy==1.12
