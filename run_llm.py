@@ -129,11 +129,11 @@ def sentence_generator(assistant_message_1, messages,results,question_prompt,fun
 
 def process_question(question, table_prompt, table_name, results_list, cur_output, j, renewed_table):
     Devided_result_list = []
-    question_prompt = question if not results_list else combine_question(question, results_list)
+    question_prompt = question if not results_list else combine_question(question, results_list,j)
     print(f"Devided Question: {question_prompt}")
     cur_output[f"Devided Question {j}"] = question_prompt
     table_input = table_prompt if not results_list else check_coherent_table(table_prompt,renewed_table,question_prompt,cur_output)
-    loop_range = 1
+    loop_range = 3
 
     for time in range(loop_range):
         function_response = function_generator(question_prompt, table_input, table_name)
@@ -160,7 +160,7 @@ def get_table_answer(test_data,start_num, end_num):
     for i in range(start_num, end_num):
         try:
             questions = test_data[i]["query"]
-            questions_list = question_devide(questions)
+            questions_list = plan_generation(questions)
             table_prompt = test_data[i]["table"]
             ground_outputs = test_data[i]["summary"]
             table_name = test_data[i]["table"]["title"]
